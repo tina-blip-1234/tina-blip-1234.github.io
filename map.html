@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>蒙古征服氣候重建：時間軸放大器與雙折線圖共享參考線</title>
+  <!-- Leaflet CSS for OpenStreetMap -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <!-- ECharts for Synchronized Interactive Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e40af;
+      --secondary: #166534;
+      --accent: #b45309;
+      --danger: #dc2626;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 18px;
+    }
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+    }
+    header {
+      background: var(--card-bg);
+      padding: 22px 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+      margin-bottom: 18px;
+      border-left: 6px solid var(--primary);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-title h1 {
+      font-size: 23px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .header-title p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+    .attribution-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      padding: 10px 22px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #f1f5f9;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 2px 6px rgba(30, 64, 175, 0.3);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 14px;
+      padding: 22px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.06);
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+    }
+
+    /* ==========================================
+       時間軸放大器 (Timeline Magnifier Panel)
+       ========================================== */
+    .magnifier-panel {
+      background: linear-gradient(135deg, #fefce8 0%, #fffbeb 100%);
+      border: 1.5px solid #fde047;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 2px 4px rgba(245, 158, 11, 0.08);
+    }
+    .magnifier-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #fef08a;
+    }
+    .magnifier-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #854d0e;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .magnifier-status {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #92400e;
+      background: #ffffff;
+      border: 1px solid #fde047;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .preset-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .preset-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #713f12;
+      margin-right: 4px;
+    }
+    .btn-preset {
+      padding: 6px 14px;
+      font-size: 13px;
+      border-radius: 7px;
+      border: 1px solid #f59e0b;
+      background: #ffffff;
+      color: #854d0e;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-preset:hover {
+      background: #fef08a;
+      transform: translateY(-1px);
+    }
+    .btn-preset.primary {
+      background: #f59e0b;
+      color: #ffffff;
+      border-color: #d97706;
+      font-weight: 700;
+      box-shadow: 0 2px 4px rgba(217, 119, 6, 0.25);
+    }
+    .btn-preset.primary:hover {
+      background: #d97706;
+    }
+    .magnifier-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #fef08a;
+    }
+    .magnifier-controls label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #713f12;
+    }
+    .year-input {
+      width: 75px;
+      padding: 4px 8px;
+      font-size: 13px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      text-align: center;
+      font-weight: 600;
+    }
+    .btn-ctrl {
+      padding: 5px 11px;
+      font-size: 12.5px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #334155;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .btn-ctrl:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }
+
+    /* 歷史大事件快速錨定列 */
+    .events-timeline {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 4px 4px;
+      scrollbar-width: thin;
+    }
+    .event-chip {
+      flex: 0 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-left: 3.5px solid var(--accent);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .event-chip:hover {
+      background: #fef3c7;
+      border-color: #f59e0b;
+      transform: translateY(-1px);
+    }
+    .event-chip strong {
+      color: #92400e;
+      display: block;
+      font-size: 12.5px;
+    }
+
+    .chart-box {
+      width: 100%;
+      height: 380px;
+      margin-bottom: 12px;
+    }
+    #map {
+      height: 620px;
+      width: 100%;
+      border-radius: 10px;
+      z-index: 1;
+    }
+    .leaflet-popup-content h3 {
+      margin-bottom: 6px;
+      font-size: 16px;
+    }
+    .leaflet-popup-content p {
+      margin: 4px 0;
+      font-size: 13px;
+    }
+    .warning-text {
+      color: #b91c1c;
+      font-weight: 600;
+      font-size: 12px;
+      background: #fef2f2;
+      padding: 4px 6px;
+      border-radius: 4px;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1>年輪裡的蒙古征服：氣候互動可視化儀表板</h1>
+        <p>依據 Pederson (2014) 與 Sheppard (2004) 原始論文氣候重建・內建雙圖連鎖時間軸放大器</p>
+      </div>
+      <div class="attribution-badge">
+        <span>📌 資料來源：PANGAEA 808750（CC BY 3.0）、NOAA MONG041</span>
+      </div>
+    </header>
+
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('charts-tab', this)">📈 雙折線圖（連鎖時間軸放大器 & 共享參考線）</button>
+      <button class="tab-btn" onclick="switchTab('map-tab', this)">🗺️ 觀測地點空間投影 (OpenStreetMap)</button>
+    </div>
+
+    <!-- 1. 折線圖分頁 -->
+    <div id="charts-tab" class="tab-content active">
+      <div class="card">
+        
+        <!-- =========================================================
+             時間軸放大器 (Timeline Magnifier Controller)
+             ========================================================= -->
+        <div class="magnifier-panel">
+          <div class="magnifier-header">
+            <div class="magnifier-title">
+              <span>🔍 蒙古崛起時間軸放大器（雙圖連鎖同步控制）</span>
+            </div>
+            <div id="magnifier-status-text" class="magnifier-status">
+              目前視角：西元 1175 年 ～ 1235 年（歷時 61 年）
+            </div>
+          </div>
+
+          <!-- 論文關鍵窗口一鍵放大按鈕 -->
+          <div class="preset-group">
+            <span class="preset-label">論文指定窗口一鍵放大：</span>
+            <button class="btn-preset primary" onclick="magnifyWindow(1175, 1235, '蒙古崛起全貌窗口')">
+              ⚡ 蒙古崛起全貌 (1175～1235 CE)
+            </button>
+            <button class="btn-preset" onclick="magnifyWindow(1180, 1210, '統一前極端乾旱期')">
+              🌵 稱汗前草原大旱 (1180～1210 CE)
+            </button>
+            <button class="btn-preset" onclick="magnifyWindow(1211, 1225, '論文核心：蒙古多雨豐水期')">
+              🌧️ 蒙古多雨豐水期 (1211～1225 CE)
+            </button>
+            <button class="btn-preset" onclick="magnifyWindow(1200, 1215, '成吉思汗稱汗轉折')">
+              👑 稱汗轉折點 (1200～1215 CE)
+            </button>
+            <button class="btn-preset" onclick="magnifyWindow(1218, 1227, '第一次西征與征夏')">
+              ⚔️ 第一次西征與征夏 (1218～1227 CE)
+            </button>
+            <button class="btn-preset" onclick="magnifyWindow(-515, 2011, '全歷史尺度')">
+              🔄 完整歷史全景 (-515～2011 CE)
+            </button>
+          </div>
+
+          <!-- 精細滑動微調與自訂輸入 -->
+          <div class="magnifier-controls">
+            <span class="preset-label">視窗精準微調：</span>
+            <button class="btn-ctrl" onclick="shiftWindow(-10)">⏪ 向前 10 年</button>
+            <button class="btn-ctrl" onclick="shiftWindow(-5)">◀ 向前 5 年</button>
+            <label>起始 CE：</label>
+            <input type="number" id="input-start-year" class="year-input" value="1175">
+            <label>結束 CE：</label>
+            <input type="number" id="input-end-year" class="year-input" value="1235">
+            <button class="btn-ctrl" style="background:#f59e0b; color:#fff; border-color:#d97706; font-weight:700;" onclick="applyCustomWindow()">🔍 放大指定年</button>
+            <button class="btn-ctrl" onclick="shiftWindow(5)">向後 5 年 ▶</button>
+            <button class="btn-ctrl" onclick="shiftWindow(10)">向後 10 年 ⏩</button>
+            <button class="btn-ctrl" onclick="zoomSpan(0.7)">➕ 放大 30%</button>
+            <button class="btn-ctrl" onclick="zoomSpan(1.4)">➖ 縮小 40%</button>
+          </div>
+
+          <!-- 歷史大事件快速聚焦條 -->
+          <div style="margin-top: 10px; font-size: 12.5px; font-weight:700; color:#78350f;">
+            📌 點選歷史大事件，連鎖平移放大至該年份：
+          </div>
+          <div class="events-timeline">
+            <div class="event-chip" onclick="magnifyAroundYear(1189, 12)">
+              <strong>1189 CE</strong> 鐵木真初稱可汗（乾旱期）
+            </div>
+            <div class="event-chip" style="border-left-color: #b45309; background:#fffbeb;" onclick="magnifyAroundYear(1206, 12)">
+              <strong style="color:#b45309;">👑 1206 CE</strong> 成吉思汗統一蒙古各部
+            </div>
+            <div class="event-chip" style="border-left-color: #166534; background:#f0fdf4;" onclick="magnifyAroundYear(1211, 12)">
+              <strong style="color:#166534;">🌧️ 1211 CE</strong> 蒙古多雨期展開・發動攻金
+            </div>
+            <div class="event-chip" onclick="magnifyAroundYear(1215, 12)">
+              <strong>1215 CE</strong> 蒙古攻佔金中都（北京）
+            </div>
+            <div class="event-chip" onclick="magnifyAroundYear(1219, 12)">
+              <strong>1219 CE</strong> 蒙古大軍發動第一次西征
+            </div>
+            <div class="event-chip" onclick="magnifyAroundYear(1225, 12)">
+              <strong>1225 CE</strong> 15 年極端多雨豐水期告終
+            </div>
+            <div class="event-chip" onclick="magnifyAroundYear(1227, 12)">
+              <strong>1227 CE</strong> 成吉思汗病逝・西夏滅亡
+            </div>
+          </div>
+        </div>
+
+        <!-- 圖表 1：都蘭降水 -->
+        <div id="chart-dulan" class="chart-box"></div>
+
+        <!-- 圖表 2：蒙古樹輪指數 -->
+        <div id="chart-mongol" class="chart-box" style="height: 420px;"></div>
+      </div>
+    </div>
+
+    <!-- 2. 地圖分頁 -->
+    <div id="map-tab" class="tab-content">
+      <div class="card">
+        <h3 style="font-size: 18px; margin-bottom: 12px;">🗺️ 兩大觀測點空間投影（OpenStreetMap 投影）</h3>
+        <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 14px;">
+          青海都蘭（藍色點，重建水文年降水量）與蒙古霍爾戈熔岩台地（綠色點，西伯利亞五針松樹輪指數）。點擊地圖上的圖標可檢視詳細經緯度、海拔高度、採樣備註與所屬研究論文。
+        </p>
+        <div id="map"></div>
+      </div>
+    </div>
+
+    <footer>
+      <p>資料來源：<strong>PANGAEA 808750（CC BY 3.0）</strong>、<strong>NOAA MONG041</strong></p>
+      <p style="margin-top: 6px;">
+        論文出處：Pederson et al. (2014) <em>PNAS</em> 111:4375–4379；Sheppard et al. (2004) <em>Climate Dynamics</em> 23:869–881；Hessl et al. (2018) <em>Sci Adv</em> 4:e1701832
+      </p>
+    </footer>
+  </div>
+
+  <!-- 載入數據腳本 -->
+  <script src="climate_data.js"></script>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <script>
+    // ==========================================
+    // 1. 初始化 ECharts 雙折線圖 (共享參考線)
+    // ==========================================
+    const chartDulanDom = document.getElementById('chart-dulan');
+    const chartMongolDom = document.getElementById('chart-mongol');
+
+    const chartDulan = echarts.init(chartDulanDom, null, { renderer: 'canvas' });
+    const chartMongol = echarts.init(chartMongolDom, null, { renderer: 'canvas' });
+
+    const dulanRaw = window.CLIMATE_DATA ? window.CLIMATE_DATA.dulan : [];
+    const mongolRaw = window.CLIMATE_DATA ? window.CLIMATE_DATA.mongol : [];
+
+    const dulanSeriesPrecip = dulanRaw.map(d => [d[0], d[1]]);
+    const dulanSeriesSmooth = dulanRaw.map(d => [d[0], d[2]]);
+    const mongolSeriesRCS = mongolRaw.map(d => [d[0], d[1]]);
+    const mongolSeries20yr = mongolRaw.map(d => [d[0], d[3]]);
+
+    // 歷史重要大事件標記 (MarkPoint)
+    const historicalMarkPoints = [
+      { name: '1189年可汗', coord: [1189, 0.9], value: '1189', itemStyle: { color: '#b45309' } },
+      { name: '1206年統一', coord: [1206, 0.54], value: '1206', itemStyle: { color: '#d97706' } },
+      { name: '1211年攻金', coord: [1211, 1.09], value: '1211', itemStyle: { color: '#16a34a' } },
+      { name: '1215年中都', coord: [1215, 1.62], value: '1215', itemStyle: { color: '#16a34a' } },
+      { name: '1219年西征', coord: [1219, 1.31], value: '1219', itemStyle: { color: '#16a34a' } },
+      { name: '1225年多雨止', coord: [1225, 1.67], value: '1225', itemStyle: { color: '#ea580c' } },
+      { name: '1227年逝世', coord: [1227, 0.95], value: '1227', itemStyle: { color: '#dc2626' } }
+    ];
+
+    // 1206 成吉思汗統一蒙古 MarkLine
+    const genghisKhanMarkLine = {
+      silent: false,
+      symbol: ['none', 'triangle'],
+      symbolSize: [0, 8],
+      lineStyle: {
+        color: '#b45309', // 琥珀金
+        width: 2.5,
+        type: 'solid'
+      },
+      label: {
+        show: true,
+        formatter: '1206年：成吉思汗統一蒙古',
+        position: 'insideEndTop',
+        color: '#78350f',
+        fontSize: 12.5,
+        fontWeight: 'bold',
+        backgroundColor: 'rgba(254, 243, 199, 0.95)',
+        borderColor: '#f59e0b',
+        borderWidth: 1.2,
+        padding: [5, 10],
+        borderRadius: 5,
+        shadowColor: 'rgba(0,0,0,0.1)',
+        shadowBlur: 3
+      },
+      data: [{ xAxis: 1206 }]
+    };
+
+    // 歷史重要時期背景色區塊 (1180-1210 乾旱, 1211-1225 蒙古多雨期)
+    const historicalMarkArea = {
+      silent: true,
+      data: [
+        [
+          {
+            name: '統一前乾旱期 (1180-1210)',
+            xAxis: 1180,
+            itemStyle: { color: 'rgba(239, 68, 68, 0.12)' },
+            label: { color: '#991b1b', fontSize: 11, position: 'insideTopLeft' }
+          },
+          { xAxis: 1210 }
+        ],
+        [
+          {
+            name: '蒙古多雨豐水期 (1211-1225)',
+            xAxis: 1211,
+            itemStyle: { color: 'rgba(34, 197, 94, 0.16)' },
+            label: { color: '#166534', fontSize: 11, position: 'insideTopLeft' }
+          },
+          { xAxis: 1225 }
+        ]
+      ]
+    };
+
+    // 圖表 1：都蘭降水配置
+    const optionDulan = {
+      title: {
+        text: '青海都蘭水文年降水量重建 (Sheppard et al. 2004)',
+        left: 20,
+        top: 8,
+        textStyle: { fontSize: 15, fontWeight: 'bold', color: '#1e3a8a' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'line',
+          snap: true,
+          lineStyle: {
+            color: '#dc2626',
+            width: 2,
+            type: 'dashed'
+          }
+        },
+        backgroundColor: 'rgba(255, 255, 255, 0.96)',
+        borderColor: '#cbd5e1',
+        borderWidth: 1,
+        textStyle: { color: '#0f172a', fontSize: 13 },
+        formatter: function (params) {
+          if (!params || !params.length) return '';
+          let year = params[0].value[0];
+          let res = `<div style="font-weight:bold; color:#1e40af; margin-bottom:4px;">西元 ${year} 年 (CE)</div>`;
+          if (year === 1206) {
+            res += `<div style="color:#b45309; font-weight:bold; margin-bottom:4px;">👑 成吉思汗統一蒙古 (1206 CE)</div>`;
+          } else if (year >= 1211 && year <= 1225) {
+            res += `<div style="color:#166534; font-weight:bold; margin-bottom:4px;">🌧️ 蒙古多雨豐水期 (Pluvial)</div>`;
+          } else if (year >= 1180 && year <= 1210) {
+            res += `<div style="color:#dc2626; font-weight:bold; margin-bottom:4px;">🌵 稱汗前極端乾旱期</div>`;
+          }
+          params.forEach(item => {
+            const val = item.value[1] !== null ? Number(item.value[1]).toFixed(1) + ' mm' : '無資料';
+            res += `<div>${item.marker} ${item.seriesName}: <strong>${val}</strong></div>`;
+          });
+          return res;
+        }
+      },
+      legend: {
+        top: 10,
+        right: 40,
+        data: ['水文年重建降水量', '100 年平滑趨勢', '歷史平均線 (177.0 mm)']
+      },
+      grid: {
+        left: 65,
+        right: 40,
+        top: 55,
+        bottom: 30
+      },
+      xAxis: {
+        type: 'value',
+        min: -515,
+        max: 2011,
+        axisLine: { lineStyle: { color: '#94a3b8' } },
+        splitLine: { show: true, lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+        axisLabel: { formatter: '{value} CE' }
+      },
+      yAxis: {
+        type: 'value',
+        name: '降水量 (mm)',
+        nameTextStyle: { color: '#475569', fontSize: 12 },
+        min: 50,
+        max: 350,
+        axisLine: { show: true, lineStyle: { color: '#94a3b8' } },
+        splitLine: { lineStyle: { color: '#f1f5f9' } }
+      },
+      series: [
+        {
+          name: '水文年重建降水量',
+          type: 'line',
+          showSymbol: false,
+          data: dulanSeriesPrecip,
+          itemStyle: { color: '#60a5fa' },
+          lineStyle: { width: 1.2, opacity: 0.7 },
+          markArea: historicalMarkArea,
+          markLine: {
+            data: [
+              genghisKhanMarkLine.data[0],
+              {
+                name: '歷史平均線 (177.0 mm)',
+                yAxis: 177.0,
+                lineStyle: { color: '#ef4444', type: 'dotted', width: 1.5 },
+                label: { formatter: '平均 177 mm', position: 'insideEndTop', color: '#dc2626' }
+              }
+            ]
+          }
+        },
+        {
+          name: '100 年平滑趨勢',
+          type: 'line',
+          showSymbol: false,
+          data: dulanSeriesSmooth,
+          itemStyle: { color: '#1d4ed8' },
+          lineStyle: { width: 2.6 }
+        }
+      ]
+    };
+
+    // 圖表 2：蒙古霍爾戈樹輪指數配置
+    const optionMongol = {
+      title: {
+        text: '蒙古霍爾戈樹輪生長寬度指數 / scPDSI 代用 (Pederson et al. 2014)',
+        left: 20,
+        top: 8,
+        textStyle: { fontSize: 15, fontWeight: 'bold', color: '#14532d' }
+      },
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: {
+          type: 'line',
+          snap: true,
+          lineStyle: {
+            color: '#dc2626',
+            width: 2,
+            type: 'dashed'
+          }
+        },
+        backgroundColor: 'rgba(255, 255, 255, 0.96)',
+        borderColor: '#cbd5e1',
+        borderWidth: 1,
+        textStyle: { color: '#0f172a', fontSize: 13 },
+        formatter: function (params) {
+          if (!params || !params.length) return '';
+          let year = params[0].value[0];
+          let res = `<div style="font-weight:bold; color:#14532d; margin-bottom:4px;">西元 ${year} 年 (CE)</div>`;
+          if (year === 1206) {
+            res += `<div style="color:#b45309; font-weight:bold; margin-bottom:4px;">👑 成吉思汗統一蒙古 (1206 CE)</div>`;
+          } else if (year >= 1211 && year <= 1225) {
+            res += `<div style="color:#166534; font-weight:bold; margin-bottom:4px;">🌧️ 蒙古多雨豐水期 (Pluvial)</div>`;
+          } else if (year >= 1180 && year <= 1210) {
+            res += `<div style="color:#dc2626; font-weight:bold; margin-bottom:4px;">🌵 稱汗前極端乾旱期</div>`;
+          }
+          params.forEach(item => {
+            const val = item.value[1] !== null ? Number(item.value[1]).toFixed(4) : '無資料';
+            res += `<div>${item.marker} ${item.seriesName}: <strong>${val}</strong></div>`;
+          });
+          return res;
+        }
+      },
+      legend: {
+        top: 10,
+        right: 40,
+        data: ['輪寬指數 (RCS簡化版)', '20 年移動平滑', '生長基準線 (指數=1.0)']
+      },
+      grid: {
+        left: 65,
+        right: 40,
+        top: 55,
+        bottom: 80
+      },
+      xAxis: {
+        type: 'value',
+        min: -515,
+        max: 2011,
+        axisLine: { lineStyle: { color: '#94a3b8' } },
+        splitLine: { show: true, lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+        axisLabel: { formatter: '{value} CE' }
+      },
+      yAxis: {
+        type: 'value',
+        name: '樹輪輪寬指數 (scPDSI Proxy)',
+        nameTextStyle: { color: '#475569', fontSize: 12 },
+        min: 0.0,
+        max: 2.4,
+        axisLine: { show: true, lineStyle: { color: '#94a3b8' } },
+        splitLine: { lineStyle: { color: '#f1f5f9' } }
+      },
+      dataZoom: [
+        {
+          type: 'slider',
+          show: true,
+          xAxisIndex: [0],
+          bottom: 15,
+          height: 28,
+          borderColor: '#cbd5e1',
+          fillerColor: 'rgba(245, 158, 11, 0.18)',
+          handleStyle: { color: '#d97706', borderColor: '#b45309' },
+          textStyle: { color: '#64748b' }
+        },
+        {
+          type: 'inside',
+          xAxisIndex: [0]
+        }
+      ],
+      series: [
+        {
+          name: '輪寬指數 (RCS簡化版)',
+          type: 'line',
+          showSymbol: false,
+          data: mongolSeriesRCS,
+          itemStyle: { color: '#22c55e' },
+          lineStyle: { width: 1.2, opacity: 0.75 },
+          markArea: historicalMarkArea,
+          markLine: {
+            data: [
+              genghisKhanMarkLine.data[0],
+              {
+                name: '生長基準線 (指數=1.0)',
+                yAxis: 1.0,
+                lineStyle: { color: '#dc2626', type: 'dotted', width: 1.5 },
+                label: { formatter: '基準 1.0', position: 'insideEndTop', color: '#dc2626' }
+              }
+            ]
+          }
+        },
+        {
+          name: '20 年移動平滑',
+          type: 'line',
+          showSymbol: false,
+          data: mongolSeries20yr,
+          itemStyle: { color: '#15803d' },
+          lineStyle: { width: 2.6 }
+        }
+      ]
+    };
+
+    // 初始化渲染
+    chartDulan.setOption(optionDulan);
+    chartMongol.setOption(optionMongol);
+
+    // 共享同步游標參考線
+    chartDulan.group = 'climate_sync_group';
+    chartMongol.group = 'climate_sync_group';
+    echarts.connect('climate_sync_group');
+
+    // =========================================================
+    // 2. 時間軸放大器核心連鎖邏輯 (Timeline Magnifier Engine)
+    // =========================================================
+    let currentStartYear = 1175;
+    let currentEndYear = 1235;
+
+    // 更新介面狀態顯示
+    function updateMagnifierStatus(start, end, label) {
+      currentStartYear = Math.round(start);
+      currentEndYear = Math.round(end);
+      document.getElementById('input-start-year').value = currentStartYear;
+      document.getElementById('input-end-year').value = currentEndYear;
+      const span = currentEndYear - currentStartYear + 1;
+      const labelText = label ? `【${label}】` : '';
+      document.getElementById('magnifier-status-text').innerHTML = 
+        `目前視角：西元 <strong>${currentStartYear}</strong> 年 ～ <strong>${currentEndYear}</strong> 年（歷時 ${span} 年）${labelText}`;
+    }
+
+    // 執行連鎖時間軸放大
+    function magnifyWindow(startYear, endYear, label) {
+      updateMagnifierStatus(startYear, endYear, label);
+
+      // 連鎖 dispatchAction 給兩張圖表
+      const actionPayload = {
+        type: 'dataZoom',
+        dataZoomIndex: 0,
+        startValue: startYear,
+        endValue: endYear
+      };
+
+      chartMongol.dispatchAction(actionPayload);
+      chartDulan.dispatchAction(actionPayload);
+    }
+
+    // 平移時間視窗
+    function shiftWindow(years) {
+      const span = currentEndYear - currentStartYear;
+      let newStart = currentStartYear + years;
+      let newEnd = newStart + span;
+      magnifyWindow(newStart, newEnd, null);
+    }
+
+    // 縮放視窗範圍比例
+    function zoomSpan(ratio) {
+      const center = (currentStartYear + currentEndYear) / 2;
+      const halfSpan = ((currentEndYear - currentStartYear) * ratio) / 2;
+      let newStart = Math.round(center - halfSpan);
+      let newEnd = Math.round(center + halfSpan);
+      magnifyWindow(newStart, newEnd, null);
+    }
+
+    // 依年份為中心放大檢視前後幾年
+    function magnifyAroundYear(targetYear, paddingYears) {
+      magnifyWindow(targetYear - paddingYears, targetYear + paddingYears, `聚焦西元 ${targetYear} 年前後`);
+    }
+
+    // 套用自訂輸入年
+    function applyCustomWindow() {
+      const s = parseInt(document.getElementById('input-start-year').value, 10);
+      const e = parseInt(document.getElementById('input-end-year').value, 10);
+      if (isNaN(s) || isNaN(e) || s >= e) {
+        alert('請輸入有效的起始年份與結束年份（起始年須小於結束年）');
+        return;
+      }
+      magnifyWindow(s, e, '自訂時間視窗');
+    }
+
+    // 監聽下方圖表的 datazoom 事件，雙向連鎖更新上方圖表與控制面板
+    chartMongol.on('datazoom', function () {
+      const opt = chartMongol.getOption().dataZoom[0];
+      const startVal = opt.startValue !== undefined ? opt.startValue : -515 + (2011 - (-515)) * (opt.start / 100);
+      const endVal = opt.endValue !== undefined ? opt.endValue : -515 + (2011 - (-515)) * (opt.end / 100);
+
+      // 同步都蘭圖表
+      chartDulan.dispatchAction({
+        type: 'dataZoom',
+        dataZoomIndex: 0,
+        start: opt.start,
+        end: opt.end,
+        startValue: startVal,
+        endValue: endVal
+      });
+
+      updateMagnifierStatus(startVal, endVal, null);
+    });
+
+    // 預設開場即放大至論文指定之「蒙古崛起關鍵期 (1175 ～ 1235 CE)」
+    setTimeout(() => {
+      magnifyWindow(1175, 1235, '蒙古崛起全貌窗口');
+    }, 300);
+
+    // 響應視窗大小調整
+    window.addEventListener('resize', () => {
+      chartDulan.resize();
+      chartMongol.resize();
+    });
+
+    // ==========================================
+    // 3. 初始化 OpenStreetMap 地圖投影
+    // ==========================================
+    const map = L.map('map').setView([42.2, 99.0], 5);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> 貢獻者 | 資料來源：PANGAEA 808750（CC BY 3.0）、NOAA MONG041'
+    }).addTo(map);
+
+    function createCustomIcon(color) {
+      return L.divIcon({
+        className: 'custom-pin',
+        html: `<div style="
+          background-color: ${color};
+          width: 24px;
+          height: 24px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          border: 2px solid #ffffff;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        "></div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 26],
+        popupAnchor: [0, -26]
+      });
+    }
+
+    const points = [
+      {
+        id: 1,
+        name: "青海都蘭 (Dulan)",
+        origName: "都兰县 ／ Дулаан (Хайши)",
+        actualLat: 36.300,
+        actualLon: 98.083,
+        datasetLat: 35.00,
+        datasetLon: 96.00,
+        elevation: "約 3,000 ~ 3,500",
+        source: "PANGAEA 808750（CC BY 3.0）",
+        paper: "Sheppard et al. (2004) Climate Dynamics 23:869-881",
+        note: "⚠ 重建對象為前一年7月至當年6月水文年累積降水。資料集經緯度為四捨五入省界座標，實際採樣林地為 36.300°N, 98.083°E",
+        dataSummary: "指標：水文年降水量重建 (mm)，記錄範圍 -515 CE ~ 1993 CE",
+        color: "#1e40af"
+      },
+      {
+        id: 2,
+        name: "蒙古霍爾戈熔岩台地 (Khorgo)",
+        origName: "Хорго (Khorgo lava field)",
+        actualLat: 48.185,
+        actualLon: 99.855,
+        datasetLat: 48.17,
+        datasetLon: 99.87,
+        elevation: "2,060",
+        source: "NOAA MONG041 ／ NOAA 24830",
+        paper: "Pederson et al. (2014) PNAS 111:4375-4379；Hessl et al. (2018)",
+        note: "⚠ 樹種為西伯利亞五針松 Pinus sibirica（PISI）。樹輪指數直接預測生長季乾旱指數 (5~9月 scPDSI)",
+        dataSummary: "指標：年輪寬度指數 (RCS標準化)，記錄範圍 -49 CE ~ 2011 CE",
+        color: "#166534"
+      }
+    ];
+
+    const latLngs = [];
+
+    points.forEach(p => {
+      latLngs.push([p.actualLat, p.actualLon]);
+      
+      const popupContent = `
+        <div style="min-width: 250px;">
+          <h3 style="color: ${p.color};">${p.name}</h3>
+          <p><strong>原文名：</strong>${p.origName}</p>
+          <p><strong>實際採樣座標：</strong>緯度 ${p.actualLat}° N，經度 ${p.actualLon}° E</p>
+          <p><strong>海拔：</strong>${p.elevation} m</p>
+          <p><strong>資料集來源：</strong><code>${p.source}</code></p>
+          <p><strong>氣候指標：</strong>${p.dataSummary}</p>
+          <p><strong>論文出處：</strong><small>${p.paper}</small></p>
+          <div class="warning-text">${p.note}</div>
+        </div>
+      `;
+
+      L.marker([p.actualLat, p.actualLon], { icon: createCustomIcon(p.color) })
+        .addTo(map)
+        .bindPopup(popupContent);
+
+      if (p.id === 1) {
+        L.circleMarker([p.datasetLat, p.datasetLon], {
+          radius: 6,
+          color: '#f59e0b',
+          fillColor: '#fde68a',
+          fillOpacity: 0.8
+        }).addTo(map).bindPopup("<b>都蘭資料集概略座標 (35°N, 96°E)</b><br>相距實際採樣點約 237 km");
+
+        L.polyline([[p.actualLat, p.actualLon], [p.datasetLat, p.datasetLon]], {
+          color: '#f59e0b',
+          weight: 2,
+          dashArray: '4, 6'
+        }).addTo(map);
+      }
+    });
+
+    L.polyline(latLngs, {
+      color: '#e11d48',
+      weight: 3,
+      opacity: 0.75,
+      dashArray: '6, 8'
+    }).addTo(map).bindTooltip("兩大觀測點空間直線距離：約 1,330 km", { sticky: true });
+
+    map.fitBounds(L.latLngBounds(latLngs), { padding: [60, 60] });
+
+    // ==========================================
+    // 4. 頁籤切換邏輯
+    // ==========================================
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+      
+      if (tabId === 'map-tab') {
+        setTimeout(() => map.invalidateSize(), 200);
+      } else if (tabId === 'charts-tab') {
+        setTimeout(() => {
+          chartDulan.resize();
+          chartMongol.resize();
+        }, 150);
+      }
+    }
+  </script>
+</body>
+</html>
